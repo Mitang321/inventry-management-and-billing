@@ -26,6 +26,7 @@ button {
   border: none;
   padding: 5px 10px;
   cursor: pointer;
+  margin-right: 5px;
 }
 
 button:hover {
@@ -57,4 +58,24 @@ form button {
 
 form button:hover {
   background-color: #45a049;
+}
+
+input[type="text"],
+input[type="number"] {
+  width: 100px;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+}
+
+.filters {
+  margin-bottom: 20px;
+}
+
+.filters input {
+  margin-right: 10px;
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  width: 150px;
 }
