@@ -1,5 +1,5 @@
-// src/InventoryList.js
 import React, { useState } from "react";
+import "./App.css";
 import { inventoryItems as initialItems } from "./data";
 
 const InventoryList = () => {
@@ -14,8 +14,14 @@ const InventoryList = () => {
   const [maxPrice, setMaxPrice] = useState("");
   const [minQuantity, setMinQuantity] = useState("");
   const [maxQuantity, setMaxQuantity] = useState("");
-  const [categories, setCategories] = useState(["Fruits", "Vegitables"]);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  const [sortField, setSortField] = useState("");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  const categories = ["Fruits", "Vegetables"];
 
   const addItem = (name, quantity, price, category) => {
     const newItem = {
@@ -61,7 +67,26 @@ const InventoryList = () => {
     setEditCategory("");
   };
 
-  const filteredItems = items.filter((item) => {
+  const handleSort = (field) => {
+    const newOrder = sortOrder === "asc" ? "desc" : "asc";
+    setSortField(field);
+    setSortOrder(newOrder);
+  };
+
+  const sortedItems = items.sort((a, b) => {
+    if (sortField) {
+      const valueA = a[sortField];
+      const valueB = b[sortField];
+      if (sortOrder === "asc") {
+        return valueA > valueB ? 1 : -1;
+      } else {
+        return valueA < valueB ? 1 : -1;
+      }
+    }
+    return items;
+  });
+
+  const filteredItems = sortedItems.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
@@ -76,8 +101,58 @@ const InventoryList = () => {
     return matchesSearch && matchesPrice && matchesQuantity && matchesCategory;
   });
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+
+  const pageNumbers = [];
+  for (let i = 1; i <= Math.ceil(filteredItems.length / itemsPerPage); i++) {
+    pageNumbers.push(i);
+  }
+
+  const handleSelectItem = (id) => {
+    if (selectedItems.includes(id)) {
+      setSelectedItems(selectedItems.filter((itemId) => itemId !== id));
+    } else {
+      setSelectedItems([...selectedItems, id]);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.length === currentItems.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(currentItems.map((item) => item.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setItems(items.filter((item) => !selectedItems.includes(item.id)));
+    setSelectedItems([]);
+  };
+
+  const handleBulkCategoryChange = (newCategory) => {
+    setItems(
+      items.map((item) =>
+        selectedItems.includes(item.id)
+          ? { ...item, category: newCategory }
+          : item
+      )
+    );
+    setSelectedItems([]);
+  };
+
+  const calculateTotalValue = () => {
+    return items.reduce((total, item) => total + item.price * item.quantity, 0);
+  };
+
+  const calculateAveragePrice = () => {
+    if (items.length === 0) return 0;
+    return calculateTotalValue() / items.length;
+  };
+
   return (
-    <div>
+    <div className="App">
       <h1>Inventory List</h1>
 
       <div className="filters">
@@ -127,16 +202,30 @@ const InventoryList = () => {
       <table>
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Quantity</th>
-            <th>Price (₹)</th>
-            <th>Category</th>
+            <th>
+              <input
+                type="checkbox"
+                checked={selectedItems.length === currentItems.length}
+                onChange={handleSelectAll}
+              />
+            </th>
+            <th onClick={() => handleSort("name")}>Name</th>
+            <th onClick={() => handleSort("quantity")}>Quantity</th>
+            <th onClick={() => handleSort("price")}>Price (₹)</th>
+            <th onClick={() => handleSort("category")}>Category</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {filteredItems.map((item) => (
+          {currentItems.map((item) => (
             <tr key={item.id}>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => handleSelectItem(item.id)}
+                />
+              </td>
               <td>
                 {editItemId === item.id ? (
                   <input
@@ -172,11 +261,17 @@ const InventoryList = () => {
               </td>
               <td>
                 {editItemId === item.id ? (
-                  <input
-                    type="text"
+                  <select
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
-                  />
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   item.category
                 )}
@@ -190,7 +285,7 @@ const InventoryList = () => {
                 ) : (
                   <>
                     <button onClick={() => handleEditClick(item)}>Edit</button>
-                    <button onClick={() => removeItem(item.id)}>Remove</button>
+                    <button onClick={() => removeItem(item.id)}>Delete</button>
                   </>
                 )}
               </td>
@@ -199,58 +294,81 @@ const InventoryList = () => {
         </tbody>
       </table>
 
-      <AddItemForm addItem={addItem} categories={categories} />
-    </div>
-  );
-};
-
-const AddItemForm = ({ addItem, categories }) => {
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState(categories[0]);
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (name && quantity && price && category) {
-      addItem(name, quantity, price, category);
-      setName("");
-      setQuantity("");
-      setPrice("");
-      setCategory(categories[0]);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <h2>Add New Item</h2>
-      <input
-        type="text"
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        type="number"
-        placeholder="Quantity"
-        value={quantity}
-        onChange={(e) => setQuantity(e.target.value)}
-      />
-      <input
-        type="number"
-        placeholder="Price (₹)"
-        value={price}
-        onChange={(e) => setPrice(e.target.value)}
-      />
-      <select value={category} onChange={(e) => setCategory(e.target.value)}>
-        {categories.map((category) => (
-          <option key={category} value={category}>
-            {category}
-          </option>
+      <div className="pagination">
+        {pageNumbers.map((number) => (
+          <button
+            key={number}
+            onClick={() => setCurrentPage(number)}
+            className={currentPage === number ? "active" : ""}
+          >
+            {number}
+          </button>
         ))}
-      </select>
-      <button type="submit">Add Item</button>
-    </form>
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          addItem(editName, editQuantity, editPrice, editCategory);
+        }}
+      >
+        <h2>Add New Item</h2>
+        <input
+          type="text"
+          placeholder="Item Name"
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          required
+        />
+        <input
+          type="number"
+          placeholder="Quantity"
+          value={editQuantity}
+          onChange={(e) => setEditQuantity(e.target.value)}
+          required
+        />
+        <input
+          type="number"
+          placeholder="Price (₹)"
+          value={editPrice}
+          onChange={(e) => setEditPrice(e.target.value)}
+          required
+        />
+        <select
+          value={editCategory}
+          onChange={(e) => setEditCategory(e.target.value)}
+          required
+        >
+          <option value="">Select Category</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+        <button type="submit">Add Item</button>
+      </form>
+
+      <div className="bulk-actions">
+        <button onClick={handleBulkDelete}>Delete Selected</button>
+        <select
+          onChange={(e) => handleBulkCategoryChange(e.target.value)}
+          value=""
+        >
+          <option value="">Change Category</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="totals">
+        <h2>Total Inventory Value: ₹{calculateTotalValue().toFixed(2)}</h2>
+        <h2>Average Item Price: ₹{calculateAveragePrice().toFixed(2)}</h2>
+      </div>
+    </div>
   );
 };
 
