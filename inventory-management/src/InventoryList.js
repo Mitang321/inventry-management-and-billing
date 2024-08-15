@@ -8,18 +8,22 @@ const InventoryList = () => {
   const [editName, setEditName] = useState("");
   const [editQuantity, setEditQuantity] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minQuantity, setMinQuantity] = useState("");
   const [maxQuantity, setMaxQuantity] = useState("");
+  const [categories, setCategories] = useState(["Fruits", "Vegitables"]);
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-  const addItem = (name, quantity, price) => {
+  const addItem = (name, quantity, price, category) => {
     const newItem = {
       id: items.length + 1,
       name,
       quantity: parseInt(quantity),
       price: parseFloat(price),
+      category,
     };
     setItems([...items, newItem]);
   };
@@ -33,6 +37,7 @@ const InventoryList = () => {
     setEditName(item.name);
     setEditQuantity(item.quantity);
     setEditPrice(item.price);
+    setEditCategory(item.category);
   };
 
   const handleSaveClick = () => {
@@ -44,6 +49,7 @@ const InventoryList = () => {
               name: editName,
               quantity: parseInt(editQuantity),
               price: parseFloat(editPrice),
+              category: editCategory,
             }
           : item
       )
@@ -52,6 +58,7 @@ const InventoryList = () => {
     setEditName("");
     setEditQuantity("");
     setEditPrice("");
+    setEditCategory("");
   };
 
   const filteredItems = items.filter((item) => {
@@ -64,7 +71,9 @@ const InventoryList = () => {
     const matchesQuantity =
       (!minQuantity || item.quantity >= parseInt(minQuantity)) &&
       (!maxQuantity || item.quantity <= parseInt(maxQuantity));
-    return matchesSearch && matchesPrice && matchesQuantity;
+    const matchesCategory =
+      !selectedCategory || item.category === selectedCategory;
+    return matchesSearch && matchesPrice && matchesQuantity && matchesCategory;
   });
 
   return (
@@ -102,6 +111,17 @@ const InventoryList = () => {
           value={maxQuantity}
           onChange={(e) => setMaxQuantity(e.target.value)}
         />
+        <select
+          value={selectedCategory}
+          onChange={(e) => setSelectedCategory(e.target.value)}
+        >
+          <option value="">All Categories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category}
+            </option>
+          ))}
+        </select>
       </div>
 
       <table>
@@ -110,6 +130,7 @@ const InventoryList = () => {
             <th>Name</th>
             <th>Quantity</th>
             <th>Price (₹)</th>
+            <th>Category</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -151,6 +172,17 @@ const InventoryList = () => {
               </td>
               <td>
                 {editItemId === item.id ? (
+                  <input
+                    type="text"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                  />
+                ) : (
+                  item.category
+                )}
+              </td>
+              <td>
+                {editItemId === item.id ? (
                   <>
                     <button onClick={handleSaveClick}>Save</button>
                     <button onClick={() => setEditItemId(null)}>Cancel</button>
@@ -167,23 +199,25 @@ const InventoryList = () => {
         </tbody>
       </table>
 
-      <AddItemForm addItem={addItem} />
+      <AddItemForm addItem={addItem} categories={categories} />
     </div>
   );
 };
 
-const AddItemForm = ({ addItem }) => {
+const AddItemForm = ({ addItem, categories }) => {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [price, setPrice] = useState("");
+  const [category, setCategory] = useState(categories[0]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (name && quantity && price) {
-      addItem(name, quantity, price);
+    if (name && quantity && price && category) {
+      addItem(name, quantity, price, category);
       setName("");
       setQuantity("");
       setPrice("");
+      setCategory(categories[0]);
     }
   };
 
@@ -208,6 +242,13 @@ const AddItemForm = ({ addItem }) => {
         value={price}
         onChange={(e) => setPrice(e.target.value)}
       />
+      <select value={category} onChange={(e) => setCategory(e.target.value)}>
+        {categories.map((category) => (
+          <option key={category} value={category}>
+            {category}
+          </option>
+        ))}
+      </select>
       <button type="submit">Add Item</button>
     </form>
   );
