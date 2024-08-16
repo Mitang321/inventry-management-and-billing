@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import Papa from "papaparse";
 import "./App.css";
 import { inventoryItems as initialItems } from "./data";
 
@@ -21,6 +22,11 @@ const InventoryList = () => {
   const [sortOrder, setSortOrder] = useState("asc");
   const [selectedItems, setSelectedItems] = useState([]);
 
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemQuantity, setNewItemQuantity] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemCategory, setNewItemCategory] = useState("");
+
   const categories = ["Fruits", "Vegetables"];
 
   const addItem = (name, quantity, price, category) => {
@@ -32,6 +38,16 @@ const InventoryList = () => {
       category,
     };
     setItems([...items, newItem]);
+  };
+
+  const handleAddItem = () => {
+    if (newItemName && newItemQuantity && newItemPrice && newItemCategory) {
+      addItem(newItemName, newItemQuantity, newItemPrice, newItemCategory);
+      setNewItemName("");
+      setNewItemQuantity("");
+      setNewItemPrice("");
+      setNewItemCategory("");
+    }
   };
 
   const removeItem = (id) => {
@@ -151,6 +167,26 @@ const InventoryList = () => {
     return calculateTotalValue() / items.length;
   };
 
+  const exportToCSV = () => {
+    const csvData = items.map((item) => ({
+      Name: item.name,
+      Quantity: item.quantity,
+      Price: item.price,
+      Category: item.category,
+    }));
+
+    const csv = Papa.unparse(csvData);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "inventory.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="App">
       <h1>Inventory List</h1>
@@ -199,6 +235,44 @@ const InventoryList = () => {
         </select>
       </div>
 
+      <div className="form-container">
+        <form className="add-item-form">
+          <h2>Add New Item</h2>
+          <input
+            type="text"
+            placeholder="Name"
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Quantity"
+            value={newItemQuantity}
+            onChange={(e) => setNewItemQuantity(e.target.value)}
+          />
+          <input
+            type="number"
+            placeholder="Price (₹)"
+            value={newItemPrice}
+            onChange={(e) => setNewItemPrice(e.target.value)}
+          />
+          <select
+            value={newItemCategory}
+            onChange={(e) => setNewItemCategory(e.target.value)}
+          >
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={handleAddItem}>
+            Add Item
+          </button>
+        </form>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -211,7 +285,7 @@ const InventoryList = () => {
             </th>
             <th onClick={() => handleSort("name")}>Name</th>
             <th onClick={() => handleSort("quantity")}>Quantity</th>
-            <th onClick={() => handleSort("price")}>Price (₹)</th>
+            <th onClick={() => handleSort("price")}>Price</th>
             <th onClick={() => handleSort("category")}>Category</th>
             <th>Actions</th>
           </tr>
@@ -256,7 +330,7 @@ const InventoryList = () => {
                     onChange={(e) => setEditPrice(e.target.value)}
                   />
                 ) : (
-                  `₹${item.price}`
+                  item.price
                 )}
               </td>
               <td>
@@ -265,7 +339,6 @@ const InventoryList = () => {
                     value={editCategory}
                     onChange={(e) => setEditCategory(e.target.value)}
                   >
-                    <option value="">Select Category</option>
                     {categories.map((category) => (
                       <option key={category} value={category}>
                         {category}
@@ -306,49 +379,6 @@ const InventoryList = () => {
         ))}
       </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          addItem(editName, editQuantity, editPrice, editCategory);
-        }}
-      >
-        <h2>Add New Item</h2>
-        <input
-          type="text"
-          placeholder="Item Name"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          required
-        />
-        <input
-          type="number"
-          placeholder="Quantity"
-          value={editQuantity}
-          onChange={(e) => setEditQuantity(e.target.value)}
-          required
-        />
-        <input
-          type="number"
-          placeholder="Price (₹)"
-          value={editPrice}
-          onChange={(e) => setEditPrice(e.target.value)}
-          required
-        />
-        <select
-          value={editCategory}
-          onChange={(e) => setEditCategory(e.target.value)}
-          required
-        >
-          <option value="">Select Category</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Add Item</button>
-      </form>
-
       <div className="bulk-actions">
         <button onClick={handleBulkDelete}>Delete Selected</button>
         <select
@@ -364,10 +394,14 @@ const InventoryList = () => {
         </select>
       </div>
 
-      <div className="totals">
-        <h2>Total Inventory Value: ₹{calculateTotalValue().toFixed(2)}</h2>
-        <h2>Average Item Price: ₹{calculateAveragePrice().toFixed(2)}</h2>
+      <div className="summary">
+        <p>Total Inventory Value: ₹{calculateTotalValue()}</p>
+        <p>Average Item Price: ₹{calculateAveragePrice().toFixed(2)}</p>
       </div>
+
+      <button className="export-btn" onClick={exportToCSV}>
+        Export as CSV
+      </button>
     </div>
   );
 };
