@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Papa from "papaparse";
+import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 import { inventoryItems as initialItems } from "./data";
 
@@ -21,11 +21,8 @@ const InventoryList = () => {
   const [sortField, setSortField] = useState("");
   const [sortOrder, setSortOrder] = useState("asc");
   const [selectedItems, setSelectedItems] = useState([]);
-
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemQuantity, setNewItemQuantity] = useState("");
-  const [newItemPrice, setNewItemPrice] = useState("");
-  const [newItemCategory, setNewItemCategory] = useState("");
+  const [billingItems, setBillingItems] = useState([]);
+  const [billName, setBillName] = useState("");
 
   const categories = ["Fruits", "Vegetables"];
 
@@ -38,16 +35,6 @@ const InventoryList = () => {
       category,
     };
     setItems([...items, newItem]);
-  };
-
-  const handleAddItem = () => {
-    if (newItemName && newItemQuantity && newItemPrice && newItemCategory) {
-      addItem(newItemName, newItemQuantity, newItemPrice, newItemCategory);
-      setNewItemName("");
-      setNewItemQuantity("");
-      setNewItemPrice("");
-      setNewItemCategory("");
-    }
   };
 
   const removeItem = (id) => {
@@ -167,62 +154,90 @@ const InventoryList = () => {
     return calculateTotalValue() / items.length;
   };
 
-  const exportToCSV = () => {
-    const csvData = items.map((item) => ({
-      Name: item.name,
-      Quantity: item.quantity,
-      Price: item.price,
-      Category: item.category,
-    }));
+  const generateBill = () => {
+    if (!billName) return;
+    const bill = {
+      name: billName,
+      items: selectedItems.map((id) => {
+        const item = items.find((item) => item.id === id);
+        return {
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.price * item.quantity,
+        };
+      }),
+      totalAmount: selectedItems.reduce((total, id) => {
+        const item = items.find((item) => item.id === id);
+        return total + item.price * item.quantity;
+      }, 0),
+    };
+    setBillingItems([...billingItems, bill]);
+    setSelectedItems([]);
+    setBillName("");
+  };
 
-    const csv = Papa.unparse(csvData);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
+  const exportToCSV = () => {
+    const header = "Name,Quantity,Price,Total\n";
+    const rows = items
+      .map(
+        (item) =>
+          `${item.name},${item.quantity},${item.price},${
+            item.price * item.quantity
+          }`
+      )
+      .join("\n");
+    const csvContent = `data:text/csv;charset=utf-8,${header}${rows}`;
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", url);
+    link.setAttribute("href", encodedUri);
     link.setAttribute("download", "inventory.csv");
-    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
   };
 
   return (
-    <div className="App">
-      <h1>Inventory List</h1>
+    <div className="App container">
+      <h1 className="my-4">Inventory List</h1>
 
-      <div className="filters">
+      <div className="filters mb-4">
         <input
           type="text"
+          className="form-control"
           placeholder="Search by name"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <input
           type="number"
+          className="form-control mt-2"
           placeholder="Min Price (₹)"
           value={minPrice}
           onChange={(e) => setMinPrice(e.target.value)}
         />
         <input
           type="number"
+          className="form-control mt-2"
           placeholder="Max Price (₹)"
           value={maxPrice}
           onChange={(e) => setMaxPrice(e.target.value)}
         />
         <input
           type="number"
+          className="form-control mt-2"
           placeholder="Min Quantity"
           value={minQuantity}
           onChange={(e) => setMinQuantity(e.target.value)}
         />
         <input
           type="number"
+          className="form-control mt-2"
           placeholder="Max Quantity"
           value={maxQuantity}
           onChange={(e) => setMaxQuantity(e.target.value)}
         />
         <select
+          className="form-control mt-2"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
         >
@@ -235,58 +250,16 @@ const InventoryList = () => {
         </select>
       </div>
 
-      <div className="form-container">
-        <form className="add-item-form">
-          <h2>Add New Item</h2>
-          <input
-            type="text"
-            placeholder="Name"
-            value={newItemName}
-            onChange={(e) => setNewItemName(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Quantity"
-            value={newItemQuantity}
-            onChange={(e) => setNewItemQuantity(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Price (₹)"
-            value={newItemPrice}
-            onChange={(e) => setNewItemPrice(e.target.value)}
-          />
-          <select
-            value={newItemCategory}
-            onChange={(e) => setNewItemCategory(e.target.value)}
-          >
-            <option value="">Select Category</option>
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={handleAddItem}>
-            Add Item
-          </button>
-        </form>
-      </div>
-
-      <table>
+      <table className="table table-striped table-bordered">
         <thead>
           <tr>
             <th>
-              <input
-                type="checkbox"
-                checked={selectedItems.length === currentItems.length}
-                onChange={handleSelectAll}
-              />
+              <input type="checkbox" onChange={handleSelectAll} />
             </th>
             <th onClick={() => handleSort("name")}>Name</th>
             <th onClick={() => handleSort("quantity")}>Quantity</th>
-            <th onClick={() => handleSort("price")}>Price</th>
-            <th onClick={() => handleSort("category")}>Category</th>
+            <th onClick={() => handleSort("price")}>Price (₹)</th>
+            <th>Category</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -300,108 +273,181 @@ const InventoryList = () => {
                   onChange={() => handleSelectItem(item.id)}
                 />
               </td>
+              <td>{item.name}</td>
+              <td>{item.quantity}</td>
+              <td>{item.price.toFixed(2)}</td>
+              <td>{item.category}</td>
               <td>
-                {editItemId === item.id ? (
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                  />
-                ) : (
-                  item.name
-                )}
-              </td>
-              <td>
-                {editItemId === item.id ? (
-                  <input
-                    type="number"
-                    value={editQuantity}
-                    onChange={(e) => setEditQuantity(e.target.value)}
-                  />
-                ) : (
-                  item.quantity
-                )}
-              </td>
-              <td>
-                {editItemId === item.id ? (
-                  <input
-                    type="number"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
-                  />
-                ) : (
-                  item.price
-                )}
-              </td>
-              <td>
-                {editItemId === item.id ? (
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                  >
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  item.category
-                )}
-              </td>
-              <td>
-                {editItemId === item.id ? (
-                  <>
-                    <button onClick={handleSaveClick}>Save</button>
-                    <button onClick={() => setEditItemId(null)}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-                    <button onClick={() => handleEditClick(item)}>Edit</button>
-                    <button onClick={() => removeItem(item.id)}>Delete</button>
-                  </>
-                )}
+                <button
+                  className="btn btn-warning btn-sm me-2"
+                  onClick={() => handleEditClick(item)}
+                >
+                  Edit
+                </button>
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeItem(item.id)}
+                >
+                  Delete
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      <div className="pagination">
-        {pageNumbers.map((number) => (
-          <button
-            key={number}
-            onClick={() => setCurrentPage(number)}
-            className={currentPage === number ? "active" : ""}
-          >
-            {number}
-          </button>
-        ))}
-      </div>
-
-      <div className="bulk-actions">
-        <button onClick={handleBulkDelete}>Delete Selected</button>
-        <select
-          onChange={(e) => handleBulkCategoryChange(e.target.value)}
-          value=""
-        >
-          <option value="">Change Category</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category}
-            </option>
+      <div className="d-flex justify-content-between mb-4">
+        <button className="btn btn-primary" onClick={() => exportToCSV()}>
+          Export to CSV
+        </button>
+        <div>
+          {pageNumbers.map((number) => (
+            <button
+              key={number}
+              className={`btn btn-outline-primary me-2 ${
+                currentPage === number ? "active" : ""
+              }`}
+              onClick={() => setCurrentPage(number)}
+            >
+              {number}
+            </button>
           ))}
-        </select>
+        </div>
       </div>
 
-      <div className="summary">
-        <p>Total Inventory Value: ₹{calculateTotalValue()}</p>
-        <p>Average Item Price: ₹{calculateAveragePrice().toFixed(2)}</p>
+      {editItemId ? (
+        <form>
+          <h2>Edit Item</h2>
+          <input
+            type="text"
+            className="form-control mb-2"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Item Name"
+          />
+          <input
+            type="number"
+            className="form-control mb-2"
+            value={editQuantity}
+            onChange={(e) => setEditQuantity(e.target.value)}
+            placeholder="Quantity"
+          />
+          <input
+            type="number"
+            className="form-control mb-2"
+            value={editPrice}
+            onChange={(e) => setEditPrice(e.target.value)}
+            placeholder="Price (₹)"
+          />
+          <select
+            className="form-select mb-2"
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+          >
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-success"
+            onClick={handleSaveClick}
+          >
+            Save
+          </button>
+        </form>
+      ) : (
+        <form>
+          <h2>Add Item</h2>
+          <input
+            type="text"
+            className="form-control mb-2"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            placeholder="Item Name"
+          />
+          <input
+            type="number"
+            className="form-control mb-2"
+            value={editQuantity}
+            onChange={(e) => setEditQuantity(e.target.value)}
+            placeholder="Quantity"
+          />
+          <input
+            type="number"
+            className="form-control mb-2"
+            value={editPrice}
+            onChange={(e) => setEditPrice(e.target.value)}
+            placeholder="Price (₹)"
+          />
+          <select
+            className="form-select mb-2"
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+          >
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() =>
+              addItem(editName, editQuantity, editPrice, editCategory)
+            }
+          >
+            Add Item
+          </button>
+        </form>
+      )}
+
+      <div className="billing-section mt-4">
+        <h2>Create Bill</h2>
+        <input
+          type="text"
+          className="form-control mb-2"
+          placeholder="Bill Name"
+          value={billName}
+          onChange={(e) => setBillName(e.target.value)}
+        />
+        <button className="btn btn-success mb-2" onClick={generateBill}>
+          Generate Bill
+        </button>
+
+        {billingItems.length > 0 && (
+          <div>
+            <h3>Generated Bills</h3>
+            <ul className="list-group">
+              {billingItems.map((bill, index) => (
+                <li key={index} className="list-group-item">
+                  <h4>{bill.name}</h4>
+                  <ul className="list-group">
+                    {bill.items.map((item, idx) => (
+                      <li key={idx} className="list-group-item">
+                        {item.name} - {item.quantity} x ₹{item.price} = ₹
+                        {item.total}
+                      </li>
+                    ))}
+                  </ul>
+                  <strong>Total Amount: ₹{bill.totalAmount.toFixed(2)}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
-      <button className="export-btn" onClick={exportToCSV}>
-        Export as CSV
-      </button>
+      <div className="mt-4">
+        <h2>Summary</h2>
+        <p>Total Inventory Value: ₹{calculateTotalValue().toFixed(2)}</p>
+        <p>Average Price per Item: ₹{calculateAveragePrice().toFixed(2)}</p>
+      </div>
     </div>
   );
 };
