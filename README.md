@@ -20,6 +20,9 @@ Users can add items from this section<br>
 
 
 
+## Installation
 
-
-
+1: `Clone the Repository`
+2: `inventry-management-and-billing`
+3. `npm install` 
+4. `npm start`
