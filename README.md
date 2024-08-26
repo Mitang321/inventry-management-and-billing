@@ -1,5 +1,11 @@
 **welcome to inventry management and billing**
+
+
 ![image](https://github.com/user-attachments/assets/3cb179a2-c5e9-46cc-ad9a-ecfa1019c0bd) <br>
+
+## Live Preview
+
+[Live Preview](https://inventry-management-and-billing.vercel.app/)
 
 Users can add items from this section<br>
 ![image](https://github.com/user-attachments/assets/d529f48b-7f77-4afe-9b15-4edec6ff3243) <br>
